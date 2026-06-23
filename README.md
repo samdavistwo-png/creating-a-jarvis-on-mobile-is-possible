@@ -26,6 +26,7 @@
 - [docs/VOICE.md](./docs/VOICE.md) — voice setup, languages, browser support
 - [docs/MEMORY.md](./docs/MEMORY.md) — how JACK learns & what it stores
 - [docs/EVOLVE.md](./docs/EVOLVE.md) — self-improvement lab & Deep Think
+- [docs/SERVER_BRAIN.md](./docs/SERVER_BRAIN.md) — real LLM via a server-side proxy (key stays server-side)
 
 ### ▶️ Run it
 ```bash

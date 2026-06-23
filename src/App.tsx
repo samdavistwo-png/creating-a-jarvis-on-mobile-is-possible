@@ -58,6 +58,7 @@ import {
   type Improvement,
   type EvolveContext,
 } from './jack/evolve'
+import { detectServerBrain, askServerBrain, buildMessages, type ServerBrainStatus } from './jack/serverbrain'
 import { JACK_CSS } from './jack/ui.css'
 
 type Tab = 'console' | 'automations' | 'evolve' | 'dashboard' | 'memory' | 'knowledge'
@@ -250,6 +251,9 @@ export default function App() {
   voiceOutRef.current = voiceOut
   langRef.current = lang
 
+  // Server-side LLM brain (proxy) — real AI without a key in the browser
+  const [serverBrain, setServerBrain] = useState<ServerBrainStatus>({ enabled: false, model: '' })
+
   // Self-improvement ("Evolve") + Deep Think
   const [skills, setSkills] = useState<Skill[]>(() => (typeof window !== 'undefined' ? loadSkills() : []))
   const [deepThinkOn, setDeepThinkOn] = useState(false)
@@ -298,6 +302,12 @@ export default function App() {
 
   useEffect(() => {
     warmVoices()
+    const ctrl = new AbortController()
+    detectServerBrain(ctrl.signal).then((s) => {
+      setServerBrain(s)
+      if (s.enabled) console.log('JACK: server brain available →', s.model)
+    })
+    return () => ctrl.abort()
   }, [])
 
   const alertCount = telemetry.alerts.length
@@ -401,6 +411,34 @@ export default function App() {
       return
     }
 
+    // Server brain path — real LLM via the server proxy (key stays server-side).
+    if (serverBrain.enabled) {
+      setThinking(true)
+      const ctrl = new AbortController()
+      abortRef.current = ctrl
+      try {
+        const msgs = buildMessages({
+          text,
+          history: messages.map((m) => ({ role: m.role, text: m.text })),
+          userName: memory.preferences.userName,
+          facts: memory.facts,
+          lang,
+        })
+        const replyText = await askServerBrain(msgs, ctrl.signal)
+        setMessages((m) => [...m, { id: uid(), role: 'jack', ts: Date.now(), module: 'brain', text: replyText, trace: thoughtTrace(text) }])
+        jackSay(replyText)
+        setMemory((mem) => recordHistory(mem, { ts: Date.now(), intent: 'chat', summary: text.slice(0, 60), module: 'brain' }))
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Unknown error'
+        console.log('JACK server brain error:', msg)
+        setMessages((m) => [...m, { id: uid(), role: 'system', ts: Date.now(), module: 'brain', text: `⚠ Server brain error: ${msg}\n\nUsing my local brain for this one.` }, localReply(text)])
+      } finally {
+        setThinking(false)
+        abortRef.current = null
+      }
+      return
+    }
+
     // Local engine path
     const reply = localReply(text)
     const trace = thoughtTrace(text)
@@ -492,8 +530,8 @@ export default function App() {
           ))}
         </nav>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span className="jack-dot" style={{ background: llmOn ? 'var(--cyan)' : 'var(--ok)' }} />
-          <span style={{ fontSize: 12, color: 'var(--muted)' }}>{llmOn ? `LLM · ${llm.model}` : 'local brain'}</span>
+          <span className="jack-dot" style={{ background: llmOn || serverBrain.enabled ? 'var(--cyan)' : 'var(--ok)' }} />
+          <span style={{ fontSize: 12, color: 'var(--muted)' }}>{llmOn ? `LLM · ${llm.model}` : serverBrain.enabled ? `server brain · ${serverBrain.model}` : 'local brain'}</span>
           <button className="jack-btn ghost" onClick={() => setShowSettings(true)}>⚙ Settings</button>
         </div>
       </header>
