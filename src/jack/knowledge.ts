@@ -123,6 +123,40 @@ const SEED: Omit<KnownTool, 'learnedAt'>[] = [
   { name: 'threat-modeling', category: 'concept', summary: 'Systematically enumerate assets, threats and mitigations (e.g. STRIDE).', source: 'seed' },
   { name: 'cis-benchmarks', category: 'concept', summary: 'Consensus secure-configuration baselines for OS/cloud/containers.', source: 'seed' },
   { name: 'mitre-attack', category: 'concept', summary: 'Knowledge base of adversary tactics & techniques for defense mapping.', source: 'seed' },
+
+  // — programming languages & runtimes —
+  { name: 'typescript', category: 'language', summary: 'Typed superset of JavaScript that compiles to plain JS; catches errors at build time.', usage: 'tsc --noEmit', source: 'seed' },
+  { name: 'python', category: 'language', summary: 'Readable general-purpose language; dominant in scripting, data science and AI.', usage: 'python3 main.py', source: 'seed' },
+  { name: 'rust', category: 'language', summary: 'Memory-safe systems language with no GC; ownership model prevents data races.', usage: 'cargo run', source: 'seed' },
+  { name: 'go', category: 'language', summary: 'Compiled, concurrent language with goroutines; great for network services.', usage: 'go run .', source: 'seed' },
+  { name: 'bun', category: 'runtime', summary: 'Fast all-in-one JS runtime, bundler, test runner and package manager.', usage: 'bun run dev', source: 'seed' },
+  { name: 'nodejs', category: 'runtime', summary: 'JavaScript runtime built on V8 for servers and tooling.', usage: 'node server.js', source: 'seed' },
+
+  // — web & frameworks —
+  { name: 'react', category: 'frontend', summary: 'Component-based UI library using a virtual DOM and hooks.', usage: 'useState/useEffect; render components', source: 'seed' },
+  { name: 'vite', category: 'frontend', summary: 'Fast dev server + build tool using native ESM and esbuild/Rollup.', usage: 'vite dev', source: 'seed' },
+  { name: 'tailwind', category: 'frontend', summary: 'Utility-first CSS framework for building UI without leaving HTML.', usage: 'class="flex gap-2 p-4"', source: 'seed' },
+  { name: 'web-speech-api', category: 'frontend', summary: 'Browser API for speech recognition (STT) and synthesis (TTS) — powers JACK voice.', usage: 'new SpeechRecognition(); speechSynthesis.speak(...)', source: 'seed' },
+  { name: 'pwa', category: 'frontend', summary: 'Progressive Web App: installable, offline-capable web app via manifest + service worker.', usage: 'add manifest.webmanifest + sw.js', source: 'seed' },
+  { name: 'rest-api', category: 'web', summary: 'HTTP API style using verbs (GET/POST/...) and resources; stateless.', usage: 'GET /users/1', source: 'seed' },
+  { name: 'graphql', category: 'web', summary: 'Query language for APIs; clients request exactly the fields they need.', usage: 'query { user(id:1){ name } }', source: 'seed' },
+  { name: 'websocket', category: 'web', summary: 'Full-duplex persistent connection for real-time data over one TCP socket.', usage: 'new WebSocket(url)', source: 'seed' },
+
+  // — data & cloud —
+  { name: 'postgresql', category: 'database', summary: 'Powerful open-source relational database with strong SQL and JSON support.', usage: 'psql; SELECT * FROM t;', source: 'seed' },
+  { name: 'redis', category: 'database', summary: 'In-memory key-value store for caching, queues and pub/sub.', usage: 'redis-cli SET k v', source: 'seed' },
+  { name: 'sqlite', category: 'database', summary: 'Serverless, file-based SQL database; perfect for local/embedded use.', usage: 'sqlite3 app.db', source: 'seed' },
+  { name: 'aws', category: 'cloud', summary: 'Amazon Web Services — broad cloud platform (EC2, S3, Lambda, RDS, ...).', source: 'seed' },
+  { name: 'cloudflare', category: 'cloud', summary: 'CDN, DNS, DDoS protection and edge compute (Workers/Pages).', source: 'seed' },
+  { name: 'github-actions', category: 'devops', summary: 'CI/CD that runs workflows on GitHub events (push/PR) — JACK deploys via it.', usage: '.github/workflows/*.yml', source: 'seed' },
+  { name: 'git', category: 'devops', summary: 'Distributed version control; branch, commit, merge, and collaborate.', usage: 'git commit -m "..."; git push', source: 'seed' },
+
+  // — AI / LLM —
+  { name: 'llm', category: 'ai', summary: 'Large Language Model — predicts text; powers chat, reasoning and tool use.', source: 'seed' },
+  { name: 'prompt-engineering', category: 'ai', summary: 'Designing inputs/instructions to get reliable, high-quality model outputs.', source: 'seed' },
+  { name: 'rag', category: 'ai', summary: 'Retrieval-Augmented Generation: ground an LLM with fetched documents/knowledge.', source: 'seed' },
+  { name: 'embeddings', category: 'ai', summary: 'Vector representations of text enabling semantic search and similarity.', source: 'seed' },
+  { name: 'function-calling', category: 'ai', summary: 'Letting an LLM invoke defined tools/APIs with structured arguments.', source: 'seed' },
 ]
 
 export function loadKnowledge(): KnowledgeState {

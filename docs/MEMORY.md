@@ -36,6 +36,22 @@ It grows three ways:
 The knowledge base is injected into the LLM's context, so JACK genuinely
 improves over time.
 
+## 💡 Knowledge pack (built-in skills)
+
+JACK ships with a **knowledge pack** — a set of seeded skills (`SEED_SKILLS` in
+`src/jack/evolve.ts`) that let it answer and speak useful facts out of the box,
+**no LLM required**. Ask things like:
+
+- "what is zero trust", "what is defense in depth", "what is least privilege"
+- "what is the CIA triad", "what is phishing", "what is ransomware", "what is 2FA"
+- "what is SQL injection", "what is XSS", "what is encryption", "backup rule"
+- "what is docker", "what is kubernetes", "what is https", "what is a vpn", "what is an api", "what is git"
+- "how to generate ssh key", "what is a firewall", "who are you jack"
+
+New knowledge-pack entries shipped in updates are **merged into your skills
+automatically** without removing skills you authored. This is how fresh
+knowledge gets fed into JACK over time.
+
 ## ⚡ Learned automations (`jack.automations.v1`)
 
 Custom "open X" commands you teach JACK (see [AUTOMATIONS.md](./AUTOMATIONS.md))
