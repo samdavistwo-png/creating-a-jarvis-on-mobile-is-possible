@@ -27,6 +27,7 @@ import {
 import { initialTelemetry, tickTelemetry, type Telemetry } from './jack/modules/monitor'
 import {
   loadAutomations,
+  saveAutomations,
   addAutomation,
   removeAutomation,
   matchAutomation,
@@ -49,6 +50,7 @@ import {
 } from './jack/voice'
 import {
   loadSkills,
+  saveSkills,
   addSkill,
   removeSkill,
   matchSkill,
@@ -61,7 +63,9 @@ import {
 import { detectServerBrain, askServerBrain, buildMessages, type ServerBrainStatus } from './jack/serverbrain'
 import { JACK_CSS } from './jack/ui.css'
 
-type Tab = 'console' | 'automations' | 'evolve' | 'dashboard' | 'memory' | 'knowledge'
+type Tab = 'console' | 'automations' | 'evolve' | 'dashboard' | 'memory' | 'knowledge' | 'admin'
+
+const ADMIN_EMAIL = 'samdavistwo@gmail.com'
 
 const uid = () => `${Date.now().toString(36)}_${Math.floor(Math.random() * 1e6).toString(36)}`
 
@@ -253,6 +257,10 @@ export default function App() {
 
   // Server-side LLM brain (proxy) — real AI without a key in the browser
   const [serverBrain, setServerBrain] = useState<ServerBrainStatus>({ enabled: false, model: '' })
+
+  // Admin (gated to the admin email)
+  const [adminEmail, setAdminEmail] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('jack.admin') || '' : ''))
+  const isAdmin = adminEmail.trim().toLowerCase() === ADMIN_EMAIL
 
   // Self-improvement ("Evolve") + Deep Think
   const [skills, setSkills] = useState<Skill[]>(() => (typeof window !== 'undefined' ? loadSkills() : []))
@@ -519,9 +527,9 @@ export default function App() {
           <div style={{ fontSize: 12, color: 'var(--muted)' }}>Autonomous AI Security Assistant</div>
         </div>
         <nav style={{ display: 'flex', gap: 6, marginLeft: 24, flexWrap: 'wrap' }}>
-          {(['console', 'automations', 'evolve', 'dashboard', 'memory', 'knowledge'] as Tab[]).map((t) => (
+          {(['console', 'automations', 'evolve', 'dashboard', 'memory', 'knowledge', 'admin'] as Tab[]).map((t) => (
             <div key={t} className={`jack-tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
-              {t === 'console' ? '▣ Console' : t === 'automations' ? '⚡ Automations' : t === 'evolve' ? '🧬 Evolve' : t === 'dashboard' ? '📊 Monitor' : t === 'memory' ? '🧠 Memory' : '📚 Knowledge'}
+              {t === 'console' ? '▣ Console' : t === 'automations' ? '⚡ Automations' : t === 'evolve' ? '🧬 Evolve' : t === 'dashboard' ? '📊 Monitor' : t === 'memory' ? '🧠 Memory' : t === 'knowledge' ? '📚 Knowledge' : '🛡 Admin'}
               {t === 'dashboard' && monitoring && alertCount > 0 && <span style={{ color: 'var(--danger)', marginLeft: 6 }}>({alertCount})</span>}
               {t === 'automations' && <span style={{ color: 'var(--muted)', marginLeft: 6 }}>({BUILTIN.length + automations.length})</span>}
               {t === 'evolve' && <span style={{ color: 'var(--muted)', marginLeft: 6 }}>({skills.length})</span>}
@@ -634,6 +642,28 @@ export default function App() {
             onInstallSkill={(s) => { const list = addSkill(skills, s); setSkills(list); setMemory((mem) => recordHistory(mem, { ts: Date.now(), intent: 'evolve.skill', summary: `Authored new skill: ${s.name}`, module: 'memory' })) }}
             onForgetSkill={(id) => setSkills(removeSkill(skills, id))}
             onAcceptCode={(imp) => { setMemory((mem) => recordHistory(mem, { ts: Date.now(), intent: 'evolve.code', summary: `Accepted self-improvement: ${imp.title}`, module: 'memory' })); console.log('JACK self-improvement accepted →', imp.title) }}
+          />
+        )}
+
+        {tab === 'admin' && (
+          <AdminPanel
+            isAdmin={isAdmin}
+            adminEmail={adminEmail}
+            onUnlock={(email) => { const e = email.trim(); setAdminEmail(e); if (e.toLowerCase() === ADMIN_EMAIL) { localStorage.setItem('jack.admin', e); console.log('JACK admin unlocked') } }}
+            onLock={() => { setAdminEmail(''); localStorage.removeItem('jack.admin') }}
+            serverBrain={serverBrain}
+            llmOn={llmOn}
+            stats={{
+              tools: knowledge.tools.length,
+              skills: skills.length,
+              automations: automations.length,
+              facts: memory.facts.length,
+              history: memory.history.length,
+              prefs: Object.keys(memory.preferences).length,
+            }}
+            onResetMemory={() => { setMemory(clearMemory()); console.log('JACK admin: memory wiped') }}
+            onResetSkills={() => { setSkills([]); saveSkills([]); console.log('JACK admin: skills cleared') }}
+            onResetAutomations={() => { setAutomations([]); saveAutomations([]); console.log('JACK admin: automations cleared') }}
           />
         )}
 
@@ -941,6 +971,97 @@ function AutoCard({ a, onRun, onForget }: { a: Automation; onRun: (a: Automation
       {onForget && (
         <span onClick={(e) => { e.stopPropagation(); onForget() }} className="jack-btn ghost" style={{ position: 'absolute', top: 6, right: 6, fontSize: 10, padding: '2px 6px' }}>✕</span>
       )}
+    </div>
+  )
+}
+
+function AdminPanel({
+  isAdmin,
+  adminEmail,
+  onUnlock,
+  onLock,
+  serverBrain,
+  llmOn,
+  stats,
+  onResetMemory,
+  onResetSkills,
+  onResetAutomations,
+}: {
+  isAdmin: boolean
+  adminEmail: string
+  onUnlock: (email: string) => void
+  onLock: () => void
+  serverBrain: ServerBrainStatus
+  llmOn: boolean
+  stats: { tools: number; skills: number; automations: number; facts: number; history: number; prefs: number }
+  onResetMemory: () => void
+  onResetSkills: () => void
+  onResetAutomations: () => void
+}) {
+  const [email, setEmail] = useState('')
+  const wrongTried = adminEmail && !isAdmin
+
+  if (!isAdmin) {
+    return (
+      <div>
+        <h2 style={{ margin: '0 0 6px', fontSize: 18 }}>🛡 Admin</h2>
+        <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 18 }}>
+          Restricted area. Enter the admin email to unlock controls. (Lightweight gate — admin status is kept in this browser only.)
+        </p>
+        <Section title="Admin sign-in">
+          <input className="jack-input" placeholder="admin email" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && onUnlock(email)} style={{ width: '100%', marginBottom: 8 }} />
+          <button className="jack-btn primary" disabled={!email.trim()} onClick={() => onUnlock(email)}>Unlock</button>
+          {wrongTried && <div style={{ color: 'var(--danger)', fontSize: 13, marginTop: 10 }}>✕ That email is not the admin. Access denied.</div>}
+        </Section>
+      </div>
+    )
+  }
+
+  const brain = llmOn ? 'Browser LLM' : serverBrain.enabled ? `Server brain · ${serverBrain.model}` : 'Local engine'
+  const cards: { label: string; value: number | string }[] = [
+    { label: 'Brain', value: brain },
+    { label: 'Knowledge tools', value: stats.tools },
+    { label: 'Skills', value: stats.skills },
+    { label: 'Automations', value: stats.automations },
+    { label: 'Memory facts', value: stats.facts },
+    { label: 'Task history', value: stats.history },
+    { label: 'Preferences', value: stats.prefs },
+  ]
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
+        <h2 style={{ margin: 0, fontSize: 18 }}>🛡 Admin Console</h2>
+        <button className="jack-btn ghost" style={{ marginLeft: 'auto', fontSize: 12 }} onClick={onLock}>Lock</button>
+      </div>
+      <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 18 }}>Signed in as <span style={{ color: 'var(--cyan)' }}>{adminEmail}</span>.</p>
+
+      <Section title="System status">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px,1fr))', gap: 10 }}>
+          {cards.map((c) => (
+            <div key={c.label} style={{ padding: '12px 14px', borderRadius: 12, border: '1px solid var(--line)', background: 'var(--panel)' }}>
+              <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 4 }}>{c.label}</div>
+              <div style={{ fontSize: 15, color: 'var(--cyan)', fontWeight: 600 }}>{c.value}</div>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Brain configuration">
+        <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 6 }}>
+          The active model is set server-side via <span className="jack-mono">.env</span> (<span className="jack-mono">GROQ_API_KEY</span> / <span className="jack-mono">LLM_BASE_URL</span> / <span className="jack-mono">LLM_MODEL</span>) and shared by all users. Browser users can also connect their own model in ⚙ Settings.
+        </p>
+        <div style={{ fontSize: 13 }}>Current: <strong style={{ color: 'var(--cyan)' }}>{brain}</strong></div>
+      </Section>
+
+      <Section title="Danger zone">
+        <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 10 }}>These clear data stored in this browser. Cannot be undone.</p>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="jack-btn danger" onClick={onResetMemory}>Wipe memory</button>
+          <button className="jack-btn danger" onClick={onResetSkills}>Clear skills</button>
+          <button className="jack-btn danger" onClick={onResetAutomations}>Clear automations</button>
+        </div>
+      </Section>
     </div>
   )
 }

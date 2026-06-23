@@ -1,0 +1,9 @@
+node_modules
+.git
+.env
+.env.local
+public/bundle.js
+public/bundle.js.map
+*.log
+.DS_Store
+docs

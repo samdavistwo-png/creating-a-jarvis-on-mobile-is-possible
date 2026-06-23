@@ -1,0 +1,23 @@
+# Fly.io config for JACK's 24/7 server (Bun server + LLM proxy).
+# Deploy:  fly launch --copy-config --now   (or: fly deploy)
+# Set the brain key as a secret (never committed):
+#   fly secrets set GROQ_API_KEY=gsk_...        # or LLM_API_KEY / LLM_BASE_URL / LLM_MODEL
+app = "jack-jarvis"
+primary_region = "sin"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
