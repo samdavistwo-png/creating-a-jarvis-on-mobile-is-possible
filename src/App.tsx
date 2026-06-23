@@ -434,7 +434,7 @@ export default function App() {
 
   // Build a ChatMessage from the local rule-based brain + persist its effects.
   function localReply(text: string): ChatMessage {
-    const res = think(text, memory)
+    const res = think(text, memory, knowledge.tools)
     let mem = memory
     if (res.remember?.preferences) mem = rememberPreferences(mem, res.remember.preferences)
     if (res.remember?.facts) mem = rememberFacts(mem, res.remember.facts)

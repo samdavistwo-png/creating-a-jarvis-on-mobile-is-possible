@@ -8,6 +8,8 @@ import type { BrainResponse, MemoryState, ModuleId } from './types'
 import { generateFirewall } from './modules/firewall'
 import { generateInfra } from './modules/infra'
 import { describeMonitoring } from './modules/monitor'
+import { converse } from './converse'
+import type { KnownTool } from './knowledge'
 
 type Intent =
   | 'greeting'
@@ -90,7 +92,7 @@ function tryRemember(text: string): BrainResponse | null {
   }
 }
 
-export function think(text: string, memory: MemoryState): BrainResponse {
+export function think(text: string, memory: MemoryState, tools: KnownTool[] = []): BrainResponse {
   const trimmed = text.trim()
   const { intent } = classify(trimmed)
   const name = memory.preferences.userName
@@ -163,14 +165,25 @@ export function think(text: string, memory: MemoryState): BrainResponse {
     case 'thanks':
       return { text: "Any time. I'm standing by.", module: 'brain' }
 
-    default:
+    default: {
+      // Conversational engine: answer questions from the knowledge base + facts,
+      // and handle small-talk warmly. This is what makes JACK feel like it's
+      // actually communicating rather than repeating a canned line.
+      const c = converse(trimmed, { tools, userName: name, factCount: memory.facts.length })
+      if (c) {
+        const res: BrainResponse = { text: c.text, module: 'brain' }
+        // When JACK genuinely learned what the user asked about, no extra note.
+        return res
+      }
       return {
         text:
-          "I didn't map that to a known action yet. I'm strongest at defensive security right now. " +
-          'Try:\n• "Build a strong firewall for my server (ssh + https)"\n• "Monitor my system"\n' +
-          '• "Give me a hardening checklist"\n• "Remember that ..."\n\nType **help** for the full list.',
+          `${name ? name + ', I' : 'I'}'m not totally sure what you mean — say a bit more and I'll help.\n\n` +
+          'I can chat, explain things ("what is a VPN?"), open apps ("open youtube"), build firewalls, ' +
+          'monitor your system, and learn what you teach me. For open-ended answers on any topic, ' +
+          'connect an LLM brain in **⚙ Settings** and I\'ll reason like ChatGPT/Claude.\n\nType **help** for the full list.',
         module: 'brain',
       }
+    }
   }
 }
 
