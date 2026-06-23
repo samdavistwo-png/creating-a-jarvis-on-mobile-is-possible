@@ -27,6 +27,7 @@
 - [docs/MEMORY.md](./docs/MEMORY.md) — how JACK learns & what it stores
 - [docs/EVOLVE.md](./docs/EVOLVE.md) — self-improvement lab & Deep Think
 - [docs/SERVER_BRAIN.md](./docs/SERVER_BRAIN.md) — real LLM via a server-side proxy (key stays server-side)
+- [docs/LOCAL_AI.md](./docs/LOCAL_AI.md) — run JACK fully offline on your own PC with Ollama (no API)
 
 ### ▶️ Run it
 ```bash
