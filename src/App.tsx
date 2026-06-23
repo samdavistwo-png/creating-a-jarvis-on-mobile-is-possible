@@ -47,9 +47,20 @@ import {
   type Lang,
   type Recognizer,
 } from './jack/voice'
+import {
+  loadSkills,
+  addSkill,
+  removeSkill,
+  matchSkill,
+  proposeImprovements,
+  deepThink,
+  type Skill,
+  type Improvement,
+  type EvolveContext,
+} from './jack/evolve'
 import { JACK_CSS } from './jack/ui.css'
 
-type Tab = 'console' | 'automations' | 'dashboard' | 'memory' | 'knowledge'
+type Tab = 'console' | 'automations' | 'evolve' | 'dashboard' | 'memory' | 'knowledge'
 
 const uid = () => `${Date.now().toString(36)}_${Math.floor(Math.random() * 1e6).toString(36)}`
 
@@ -239,6 +250,18 @@ export default function App() {
   voiceOutRef.current = voiceOut
   langRef.current = lang
 
+  // Self-improvement ("Evolve") + Deep Think
+  const [skills, setSkills] = useState<Skill[]>(() => (typeof window !== 'undefined' ? loadSkills() : []))
+  const [deepThinkOn, setDeepThinkOn] = useState(false)
+  const deepRef = useRef(deepThinkOn)
+  deepRef.current = deepThinkOn
+
+  function thoughtTrace(text: string): string[] | undefined {
+    if (!deepRef.current) return undefined
+    const dt = deepThink(text, { toolCount: knowledge.tools.length, factCount: memory.facts.length })
+    return [...dt.steps.map((s) => `${s.title} — ${s.detail}`), `➡ ${dt.summary}`]
+  }
+
   function jackSay(text: string) {
     if (voiceOutRef.current) speak(text, langRef.current)
   }
@@ -342,6 +365,15 @@ export default function App() {
     // or teaching a new command. Handled instantly, no LLM needed.
     if (handleAutomation(text)) return
 
+    // Self-authored skills — capabilities JACK added to itself in the Evolve lab.
+    const skill = matchSkill(text, skills)
+    if (skill) {
+      console.log('JACK skill fired →', skill.name)
+      setMessages((m) => [...m, { id: uid(), role: 'jack', ts: Date.now(), module: 'brain', text: skill.response, trace: thoughtTrace(text) }])
+      jackSay(skill.response)
+      return
+    }
+
     // LLM path
     if (llmOn) {
       setThinking(true)
@@ -371,6 +403,8 @@ export default function App() {
 
     // Local engine path
     const reply = localReply(text)
+    const trace = thoughtTrace(text)
+    if (trace) reply.trace = trace
     if (reply.module === 'monitor') { setMonitoring(true); setTimeout(() => setTab('dashboard'), 400) }
     setMessages((m) => [...m, reply])
     jackSay(reply.text)
@@ -447,11 +481,12 @@ export default function App() {
           <div style={{ fontSize: 12, color: 'var(--muted)' }}>Autonomous AI Security Assistant</div>
         </div>
         <nav style={{ display: 'flex', gap: 6, marginLeft: 24, flexWrap: 'wrap' }}>
-          {(['console', 'automations', 'dashboard', 'memory', 'knowledge'] as Tab[]).map((t) => (
+          {(['console', 'automations', 'evolve', 'dashboard', 'memory', 'knowledge'] as Tab[]).map((t) => (
             <div key={t} className={`jack-tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
-              {t === 'console' ? '▣ Console' : t === 'automations' ? '⚡ Automations' : t === 'dashboard' ? '📊 Monitor' : t === 'memory' ? '🧠 Memory' : '📚 Knowledge'}
+              {t === 'console' ? '▣ Console' : t === 'automations' ? '⚡ Automations' : t === 'evolve' ? '🧬 Evolve' : t === 'dashboard' ? '📊 Monitor' : t === 'memory' ? '🧠 Memory' : '📚 Knowledge'}
               {t === 'dashboard' && monitoring && alertCount > 0 && <span style={{ color: 'var(--danger)', marginLeft: 6 }}>({alertCount})</span>}
               {t === 'automations' && <span style={{ color: 'var(--muted)', marginLeft: 6 }}>({BUILTIN.length + automations.length})</span>}
+              {t === 'evolve' && <span style={{ color: 'var(--muted)', marginLeft: 6 }}>({skills.length})</span>}
               {t === 'knowledge' && <span style={{ color: 'var(--muted)', marginLeft: 6 }}>({knowledge.tools.length})</span>}
             </div>
           ))}
@@ -513,6 +548,14 @@ export default function App() {
                 {voiceOut ? '🔊 JACK voice: on' : '🔈 JACK voice: off'}
               </span>
               {!ttsSupported() && <span style={{ fontSize: 11, color: 'var(--warn)' }}>· speech not supported here</span>}
+              <span
+                onClick={() => setDeepThinkOn((v) => !v)}
+                className="jack-btn ghost"
+                style={{ fontSize: 12.5, cursor: 'pointer', marginLeft: 'auto', color: deepThinkOn ? 'var(--cyan)' : 'var(--muted)', borderColor: deepThinkOn ? 'var(--cyan)' : 'var(--line)' }}
+                title="Show JACK's multi-step reasoning before each answer"
+              >
+                {deepThinkOn ? '🧠 Deep Think: on' : '🧠 Deep Think: off'}
+              </span>
             </div>
 
             <div style={{ display: 'flex', gap: 10 }}>
@@ -536,6 +579,23 @@ export default function App() {
             onRun={(a) => { runAutomation(a); jackSay(langRef.current === 'ta' ? `${a.label} திறக்கிறேன்` : `Opening ${a.label}`) }}
             onAdd={(a) => { const { list } = addAutomation(automations, a); setAutomations(list); console.log('JACK automation added:', a.label) }}
             onForget={(id) => setAutomations(removeAutomation(automations, id))}
+          />
+        )}
+
+        {tab === 'evolve' && (
+          <EvolvePanel
+            skills={skills}
+            ctx={{
+              userName: memory.preferences.userName,
+              factCount: memory.facts.length,
+              historyTopModule: topModule(memory.history),
+              toolCount: knowledge.tools.length,
+              automationCount: automations.length,
+              skillCount: skills.length,
+            }}
+            onInstallSkill={(s) => { const list = addSkill(skills, s); setSkills(list); setMemory((mem) => recordHistory(mem, { ts: Date.now(), intent: 'evolve.skill', summary: `Authored new skill: ${s.name}`, module: 'memory' })) }}
+            onForgetSkill={(id) => setSkills(removeSkill(skills, id))}
+            onAcceptCode={(imp) => { setMemory((mem) => recordHistory(mem, { ts: Date.now(), intent: 'evolve.code', summary: `Accepted self-improvement: ${imp.title}`, module: 'memory' })); console.log('JACK self-improvement accepted →', imp.title) }}
           />
         )}
 
@@ -710,6 +770,121 @@ function AutomationsPanel({
           </div>
         </Section>
       ))}
+    </div>
+  )
+}
+
+function topModule(history: { module: ModuleId }[]): string | undefined {
+  if (!history.length) return undefined
+  const counts = new Map<string, number>()
+  for (const h of history) counts.set(h.module, (counts.get(h.module) ?? 0) + 1)
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]
+}
+
+function EvolvePanel({
+  skills,
+  ctx,
+  onInstallSkill,
+  onForgetSkill,
+  onAcceptCode,
+}: {
+  skills: Skill[]
+  ctx: EvolveContext
+  onInstallSkill: (s: Omit<Skill, 'createdAt'>) => void
+  onForgetSkill: (id: string) => void
+  onAcceptCode: (imp: Improvement) => void
+}) {
+  const proposals = useMemo(() => proposeImprovements(ctx), [ctx])
+  const [decided, setDecided] = useState<Record<string, 'approved' | 'rejected'>>({})
+  const [name, setName] = useState('')
+  const [triggers, setTriggers] = useState('')
+  const [response, setResponse] = useState('')
+
+  function decide(imp: Improvement, ok: boolean) {
+    setDecided((d) => ({ ...d, [imp.id]: ok ? 'approved' : 'rejected' }))
+    if (!ok) return
+    if (imp.kind === 'skill' && imp.skill) onInstallSkill(imp.skill)
+    else onAcceptCode(imp)
+  }
+
+  function authorManual() {
+    const trigs = triggers.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean)
+    if (!name.trim() || !trigs.length || !response.trim()) return
+    onInstallSkill({
+      id: `skill_manual_${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+      name: name.trim(),
+      description: 'Authored by you',
+      triggers: trigs,
+      response: response.trim(),
+      source: 'taught',
+    })
+    setName(''); setTriggers(''); setResponse('')
+  }
+
+  return (
+    <div>
+      <h2 style={{ margin: '0 0 6px', fontSize: 18 }}>🧬 Self-Improvement Lab</h2>
+      <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 16 }}>
+        This is how JACK gets better over time — safely. JACK <strong style={{ color: 'var(--cyan)' }}>authors new skills</strong> (capabilities it starts using the moment you approve them) and <strong style={{ color: 'var(--cyan)' }}>drafts code patches to its own source</strong> for you to ship. Every change is human-approved — JACK writes, you decide.
+      </p>
+      <div style={{ padding: '10px 14px', borderRadius: 10, border: '1px solid var(--line)', background: 'rgba(56,189,248,0.05)', fontSize: 12.5, color: 'var(--muted)', marginBottom: 18 }}>
+        ℹ️ Honest by design: a web app can't hot-patch its own running bundle or become a superintelligence. JACK is a powerful, <em>self-extending</em> assistant — it adds real new behaviour to itself and proposes real upgrades, all under your control. Turn on <strong>🧠 Deep Think</strong> on the Console to watch its reasoning.
+      </div>
+
+      <Section title="Author a skill yourself">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+          <input className="jack-input" placeholder="skill name" value={name} onChange={(e) => setName(e.target.value)} />
+          <input className="jack-input" placeholder="triggers (comma separated)" value={triggers} onChange={(e) => setTriggers(e.target.value)} />
+        </div>
+        <input className="jack-input" placeholder="what JACK should reply" value={response} onChange={(e) => setResponse(e.target.value)} style={{ marginBottom: 8, width: '100%' }} />
+        <button className="jack-btn primary" disabled={!name.trim() || !triggers.trim() || !response.trim()} onClick={authorManual}>+ Install skill</button>
+      </Section>
+
+      {skills.length > 0 && (
+        <Section title={`Installed skills (${skills.length})`}>
+          {skills.map((s) => (
+            <div key={s.id} style={{ padding: '8px 0', borderBottom: '1px solid rgba(56,189,248,0.06)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: 'var(--cyan)', fontWeight: 600 }}>{s.name}</span>
+                <span style={{ fontSize: 10.5, color: 'var(--muted)', border: '1px solid var(--line)', borderRadius: 6, padding: '1px 6px' }}>{s.source}</span>
+                <button className="jack-btn ghost" style={{ marginLeft: 'auto', fontSize: 11, padding: '4px 8px' }} onClick={() => onForgetSkill(s.id)}>forget</button>
+              </div>
+              <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2 }}>triggers: {s.triggers.join(', ')}</div>
+              <div style={{ fontSize: 13.5, marginTop: 2 }}>“{s.response}”</div>
+            </div>
+          ))}
+        </Section>
+      )}
+
+      <Section title="JACK's improvement proposals">
+        <p style={{ color: 'var(--muted)', fontSize: 12.5, marginBottom: 12 }}>JACK reflected on its memory, tools and usage and proposes these upgrades to itself:</p>
+        {proposals.map((imp) => {
+          const state = decided[imp.id]
+          return (
+            <div key={imp.id} style={{ marginBottom: 12, border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: '1px solid var(--line)', background: imp.kind === 'code' ? 'rgba(167,139,250,0.06)' : 'rgba(52,211,153,0.06)' }}>
+                <span style={{ fontSize: 12, color: imp.kind === 'code' ? 'var(--infra, #a78bfa)' : 'var(--ok)', fontWeight: 600 }}>{imp.kind === 'code' ? '⟨code⟩' : '◆ skill'}</span>
+                <span style={{ fontWeight: 600, fontSize: 13.5 }}>{imp.title}</span>
+              </div>
+              <div style={{ padding: '12px 14px' }}>
+                <div style={{ fontSize: 13.5, color: 'var(--text)' }}>{imp.rationale}</div>
+                {imp.file && <div className="jack-mono" style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 6 }}>📄 {imp.file}</div>}
+                {imp.patch && <pre className="jack-code jack-mono" style={{ marginTop: 8 }}><code>{imp.patch}</code></pre>}
+                {!state ? (
+                  <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                    <button className="jack-btn danger" onClick={() => decide(imp, false)}>Dismiss</button>
+                    <button className="jack-btn primary" style={{ marginLeft: 'auto' }} onClick={() => decide(imp, true)}>{imp.kind === 'skill' ? 'Install skill' : 'Accept patch'}</button>
+                  </div>
+                ) : (
+                  <div style={{ marginTop: 10, fontSize: 13, color: state === 'approved' ? 'var(--ok)' : 'var(--danger)' }}>
+                    {state === 'approved' ? (imp.kind === 'skill' ? '✓ Installed — JACK is using this skill now.' : '✓ Accepted & logged. Ask me to "implement it" and I\'ll prepare the code change for review.') : '✕ Dismissed.'}
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </Section>
     </div>
   )
 }

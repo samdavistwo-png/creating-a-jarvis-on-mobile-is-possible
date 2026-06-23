@@ -10,15 +10,22 @@
 - 🎤 **Bilingual voice** — speak commands in **English** or **Tamil**; tap 🔊 and JACK **speaks its replies** aloud. (Web Speech API — no key needed.)
 - ⚡ **Automations** — say `open youtube`, `play netflix`, `open video editor`, or Tamil `யூடியூப் திற` and JACK launches it. **36 built-in** apps + your own.
 - 🧠 **Learns & remembers** — teach it `when I say music open https://open.spotify.com`; it persists across sessions in your browser.
+- 🧬 **Self-improves** — in the **Evolve** lab JACK **authors new skills** for itself (used the instant you approve them) and **drafts code patches to its own source** for you to ship. Plus **🧠 Deep Think**, a transparent multi-step reasoning brain.
 - 📚 **Knowledge base** — ~60 seeded security/devops tools & concepts that grow over time and survive upgrades.
 - 🛡 **Security brain** — firewalls, hardened Dockerfiles, reverse proxies, live monitoring; all state-changing plans require your approval.
 - 🔌 **Optional LLM brain** — connect any OpenAI-compatible API in ⚙ Settings for free-form reasoning. Your key stays in your browser.
+
+> **Honest scope:** JACK is a powerful, *self-extending* assistant — it adds real
+> new behaviour to itself and proposes real upgrades, all human-approved. It does
+> not (and cannot) hot-patch its own running bundle or become a superintelligence.
+> See [docs/EVOLVE.md](./docs/EVOLVE.md).
 
 ### 📖 Docs
 - [docs/JACK.md](./docs/JACK.md) — overview & architecture
 - [docs/AUTOMATIONS.md](./docs/AUTOMATIONS.md) — every "open X" command + teaching your own
 - [docs/VOICE.md](./docs/VOICE.md) — voice setup, languages, browser support
 - [docs/MEMORY.md](./docs/MEMORY.md) — how JACK learns & what it stores
+- [docs/EVOLVE.md](./docs/EVOLVE.md) — self-improvement lab & Deep Think
 
 ### ▶️ Run it
 ```bash
