@@ -1,3 +1,36 @@
+# 🤖 JACK — a JARVIS for mobile
+
+> Creating a JARVIS on mobile **is** possible. JACK is an autonomous AI assistant
+> that runs as a mobile-friendly web app — you can **talk to it in English and
+> Tamil, and it talks back**, it **opens websites and apps on command**, it
+> **learns and remembers** what you teach it, and it reasons about **security &
+> infrastructure**.
+
+### ✨ What JACK can do
+- 🎤 **Bilingual voice** — speak commands in **English** or **Tamil**; tap 🔊 and JACK **speaks its replies** aloud. (Web Speech API — no key needed.)
+- ⚡ **Automations** — say `open youtube`, `play netflix`, `open video editor`, or Tamil `யூடியூப் திற` and JACK launches it. **36 built-in** apps + your own.
+- 🧠 **Learns & remembers** — teach it `when I say music open https://open.spotify.com`; it persists across sessions in your browser.
+- 📚 **Knowledge base** — ~60 seeded security/devops tools & concepts that grow over time and survive upgrades.
+- 🛡 **Security brain** — firewalls, hardened Dockerfiles, reverse proxies, live monitoring; all state-changing plans require your approval.
+- 🔌 **Optional LLM brain** — connect any OpenAI-compatible API in ⚙ Settings for free-form reasoning. Your key stays in your browser.
+
+### 📖 Docs
+- [docs/JACK.md](./docs/JACK.md) — overview & architecture
+- [docs/AUTOMATIONS.md](./docs/AUTOMATIONS.md) — every "open X" command + teaching your own
+- [docs/VOICE.md](./docs/VOICE.md) — voice setup, languages, browser support
+- [docs/MEMORY.md](./docs/MEMORY.md) — how JACK learns & what it stores
+
+### ▶️ Run it
+```bash
+bun install
+bun run dev      # http://localhost:8080
+```
+Open it on your phone (HTTPS) to use the microphone. Build & deploy below.
+
+> ⚠️ **Mic needs HTTPS** — use the deployed URL or an HTTPS tunnel, not raw `http://localhost`, for voice input on mobile.
+
+---
+
 # Bun 1.3.1 Boilerplate
 
 A **true Bun boilerplate** using Bun's native development server, bundler, and the revolutionary `console: true` feature that pipes frontend console logs to your backend terminal.

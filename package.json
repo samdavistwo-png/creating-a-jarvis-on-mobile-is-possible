@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "dev": "bun run server.ts",
-    "build": "bun build ./src/index.tsx --outdir ./public --entry-naming bundle.js --minify",
+    "build": "bun run build.ts",
     "start": "NODE_ENV=production bun run server.ts",
     "deploy": "bun run deploy.ts"
   },
